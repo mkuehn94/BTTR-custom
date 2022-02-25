@@ -26,6 +26,8 @@ class BTTR(pl.LightningModule):
         self.encoder = Encoder(
             d_model=d_model, growth_rate=growth_rate, num_layers=num_layers
         )
+
+
         self.decoder = Decoder(
             d_model=d_model,
             nhead=nhead,
@@ -60,6 +62,27 @@ class BTTR(pl.LightningModule):
         out = self.decoder(feature, mask, tgt)
 
         return out
+
+    def beam_search_logits(
+        self, img: FloatTensor, img_mask: LongTensor, beam_size: int, max_len: int
+    ) -> FloatTensor:
+        """run bi-direction beam search for given img
+
+        Parameters
+        ----------
+        img : FloatTensor
+            [1, 1, h', w']
+        img_mask: LongTensor
+            [1, h', w']
+        beam_size : int
+        max_len : int
+
+        Returns
+        -------
+        List[Hypothesis]
+        """
+        feature, mask = self.encoder(img, img_mask)  # [1, t, d]
+        return self.decoder.beam_search_logits(feature, mask, beam_size, max_len)
 
     def beam_search(
         self, img: FloatTensor, img_mask: LongTensor, beam_size: int, max_len: int

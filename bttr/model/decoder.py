@@ -164,6 +164,8 @@ class Decoder(pl.LightningModule):
             dtype=torch.long,
             device=self.device,
         )
+        hypotheses_logits = torch.zeros((beam_size, max_len + 1, vocab_size))
+        
         hypotheses[:, 0] = start_w
 
         hyp_scores = torch.zeros(1, dtype=torch.float, device=self.device)
@@ -183,6 +185,13 @@ class Decoder(pl.LightningModule):
             live_hyp_num = beam_size - len(completed_hypotheses)
             exp_hyp_scores = repeat(hyp_scores, "b -> b e", e=vocab_size)
             continuous_hyp_scores = rearrange(exp_hyp_scores + log_p_t, "b e -> (b e)")
+            i = 0
+            while i < continuous_hyp_scores.shape[0]:
+                next = i + vocab_size
+                hypotheses_logits[int(i/vocab_size), t] = torch.nn.functional.softmax(continuous_hyp_scores[int(i):int(next)])
+                i = next
+            
+
             top_cand_hyp_scores, top_cand_hyp_pos = torch.topk(
                 continuous_hyp_scores, k=live_hyp_num
             )
@@ -200,6 +209,7 @@ class Decoder(pl.LightningModule):
                 cand_new_hyp_score = cand_new_hyp_score.detach().item()
                 hypotheses[prev_hyp_id, t] = hyp_word_id
 
+
                 if hyp_word_id == stop_w:
                     completed_hypotheses.append(
                         Hypothesis(
@@ -208,6 +218,7 @@ class Decoder(pl.LightningModule):
                             .clone(),  # remove START_W at first
                             score=cand_new_hyp_score,
                             direction=direction,
+                            logits=hypotheses_logits[prev_hyp_id]
                         )
                     )
                 else:
@@ -228,6 +239,7 @@ class Decoder(pl.LightningModule):
                     seq_tensor=hypotheses[0, 1:].detach().clone(),
                     score=hyp_scores[0].detach().item(),
                     direction=direction,
+                    logits=hypotheses_logits[0]
                 )
             )
 

@@ -66,6 +66,23 @@ class LitBTTR(pl.LightningModule):
         """
         return self.bttr(img, img_mask, tgt)
 
+    def beam_search_logits(
+        self,
+        img: FloatTensor,
+        beam_size: int = 10,
+        max_len: int = 200,
+        alpha: float = 1.0,
+    ) -> FloatTensor:
+        assert img.dim() == 3
+        img_mask = torch.zeros_like(img, dtype=torch.long)  # squeeze channel
+        hyps = self.bttr.beam_search(img.unsqueeze(0), img_mask, beam_size, max_len)
+        best_hyp = max(hyps, key=lambda h: h.score / (len(h) ** alpha))
+
+        #print('best_hyp_index: ', best_hyp_index)
+        #print('len hyps: ', len(hyps))
+        #print(torch.argmax(best_hyp.logits, dim=1))
+        return best_hyp.logits
+
     def beam_search(
         self,
         img: FloatTensor,
@@ -95,6 +112,7 @@ class LitBTTR(pl.LightningModule):
         img_mask = torch.zeros_like(img, dtype=torch.long)  # squeeze channel
         hyps = self.bttr.beam_search(img.unsqueeze(0), img_mask, beam_size, max_len)
         best_hyp = max(hyps, key=lambda h: h.score / (len(h) ** alpha))
+
         return vocab.indices2label(best_hyp.seq)
 
     def training_step(self, batch: Batch, _):

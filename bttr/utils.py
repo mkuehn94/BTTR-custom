@@ -19,6 +19,7 @@ class Hypothesis:
         seq_tensor: LongTensor,
         score: float,
         direction: str,
+        logits: LongTensor
     ) -> None:
         assert direction in {"l2r", "r2l"}
         raw_seq = seq_tensor.tolist()
@@ -30,6 +31,7 @@ class Hypothesis:
 
         self.seq = result
         self.score = score
+        self.logits = logits
 
     def __len__(self):
         if len(self.seq) != 0:
