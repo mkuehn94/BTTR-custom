@@ -218,7 +218,7 @@ class Decoder(pl.LightningModule):
                             .clone(),  # remove START_W at first
                             score=cand_new_hyp_score,
                             direction=direction,
-                            logits=hypotheses_logits[prev_hyp_id]
+                            logits=hypotheses_logits[prev_hyp_id].detach().clone()
                         )
                     )
                 else:
@@ -304,9 +304,10 @@ class Decoder(pl.LightningModule):
         -------
         List[Hypothesis]
         """
-        l2r_hypos = self._beam_search(src, mask, "l2r", beam_size, max_len)
-        self._cross_rate_score(src, mask, l2r_hypos, direction="r2l")
+        with torch.no_grad():
+            l2r_hypos = self._beam_search(src, mask, "l2r", beam_size, max_len)
+            self._cross_rate_score(src, mask, l2r_hypos, direction="r2l")
 
-        r2l_hypos = self._beam_search(src, mask, "r2l", beam_size, max_len)
-        self._cross_rate_score(src, mask, r2l_hypos, direction="l2r")
-        return l2r_hypos + r2l_hypos
+            r2l_hypos = self._beam_search(src, mask, "r2l", beam_size, max_len)
+            self._cross_rate_score(src, mask, r2l_hypos, direction="l2r")
+            return l2r_hypos + r2l_hypos
